@@ -33,6 +33,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   deleteMessage: (inboxId: string, messageId: string) => 
     ipcRenderer.invoke('delete-message', inboxId, messageId),
+
+  archiveMessages: (inboxId: string, messageIds: string[]) =>
+    ipcRenderer.invoke('archive-messages', inboxId, messageIds),
   
   markAsRead: (messageId: string) => 
     ipcRenderer.invoke('mark-as-read', messageId),

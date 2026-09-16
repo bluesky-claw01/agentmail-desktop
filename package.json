@@ -1,6 +1,6 @@
 {
   "name": "agentmail-desktop",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Cross-platform desktop client for AgentMail (Windows 11 & macOS)",
   "main": "dist/main/main.js",
   "scripts": {
@@ -67,11 +67,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.ico"
@@ -86,11 +90,15 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["universal"]
+          "arch": [
+            "universal"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["universal"]
+          "arch": [
+            "universal"
+          ]
         }
       ],
       "icon": "assets/icon.icns",

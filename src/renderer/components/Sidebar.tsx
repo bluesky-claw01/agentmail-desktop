@@ -5,6 +5,7 @@ interface SidebarProps {
   inboxes: InboxInfo[];
   currentInbox: InboxInfo | null;
   currentFolder: FolderType;
+  refreshKey: number;
   onInboxChange: (inbox: InboxInfo) => void;
   onFolderChange: (folder: FolderType) => void;
   onLogout: () => void;
@@ -14,6 +15,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   inboxes,
   currentInbox,
   currentFolder,
+  refreshKey,
   onInboxChange,
   onFolderChange,
   onLogout
@@ -24,11 +26,11 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (currentInbox) {
       loadUnreadCounts();
     }
-  }, [currentInbox]);
+  }, [currentInbox, refreshKey]);
 
   const loadUnreadCounts = async () => {
     if (!currentInbox) return;
-    
+
     const folders = [FolderType.INBOX, FolderType.SENT, FolderType.ARCHIVE];
     const counts: Record<string, number> = {};
 
@@ -48,14 +50,14 @@ const Sidebar: React.FC<SidebarProps> = ({
         <h2>AgentMail</h2>
         {currentInbox && inboxes.length > 0 && (
           <div className="inbox-switcher">
-            <select 
-              value={currentInbox.id} 
+            <select
+              value={currentInbox.id}
               onChange={(e) => {
-                const inbox = inboxes.find(i => i.id === e.target.value);
+                const inbox = inboxes.find((i) => i.id === e.target.value);
                 if (inbox) onInboxChange(inbox);
               }}
             >
-              {inboxes.map(inbox => (
+              {inboxes.map((inbox) => (
                 <option key={inbox.id} value={inbox.id}>
                   {inbox.email}
                 </option>

@@ -19,8 +19,8 @@ const SetupPage: React.FC<SetupPageProps> = ({ onComplete }) => {
     setLoading(true);
 
     try {
-      const result = await window.electronAPI.setApiKey(apiKey);
-      
+      const result = await window.electronAPI.setApiKey(apiKey.trim());
+
       if (!result.success) {
         setError(result.error || 'Failed to validate API key');
         setLoading(false);
@@ -28,9 +28,10 @@ const SetupPage: React.FC<SetupPageProps> = ({ onComplete }) => {
       }
 
       const inboxesResult = await window.electronAPI.listInboxes();
-      
+
       if (!inboxesResult.success) {
-        setError(inboxesResult.error || 'Failed to load inboxes');
+        const inboxError = inboxesResult.error || 'Failed to load inboxes';
+        setError(inboxError);
         setLoading(false);
         return;
       }

@@ -24,6 +24,8 @@ module.exports = {
     __filename: false
   },
   externals: {
-    'better-sqlite3': 'commonjs better-sqlite3'
+    'better-sqlite3': 'commonjs better-sqlite3',
+    // optional peer of agentmail; only loaded if x402 payment mode is enabled
+    '@x402/fetch': 'commonjs @x402/fetch'
   }
 };
