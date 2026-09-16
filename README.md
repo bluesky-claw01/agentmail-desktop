@@ -1,21 +1,25 @@
 # AgentMail Desktop
 
-A Windows 11–compatible desktop mail client for [AgentMail](https://www.agentmail.to/), built with Electron, React, and TypeScript.
+A cross-platform desktop mail client for [AgentMail](https://www.agentmail.to/), built with Electron, React, and TypeScript. Supports **Windows 11** and **macOS** (Apple Silicon + Intel).
 
 ## Features
 
-- **Secure API Key Storage**: API keys are encrypted using Electron's `safeStorage` API (Windows Credential Manager / DPAPI)
+- **Secure API Key Storage**: API keys are encrypted using Electron's `safeStorage` API
+  - Windows: Credential Manager / DPAPI
+  - macOS: Keychain
 - **Multi-Inbox Support**: Manage up to 3 inboxes from a single API key
 - **Local SQLite Archive**: Messages are cached locally for offline access
 - **Folder Management**: Inbox, Sent, and Archive folders with automatic label mapping
 - **Message Operations**: Compose, send, reply, and delete messages with cloud synchronization
 - **Auto-Sync**: Automatic message polling (60s interval) when the app is focused
-- **Modern UI**: Clean, responsive interface optimized for Windows 11
+- **Modern UI**: Clean, responsive interface optimized for desktop use
+- **Cross-Platform**: Native builds for Windows 11 and macOS (universal binary)
 
 ## Prerequisites
 
 - Node.js 18+ and npm
-- Windows 11 (for building the installer)
+- **For Windows builds**: Windows 11 machine
+- **For macOS builds**: macOS machine (Apple Silicon or Intel)
 - AgentMail API Key (get one at [agentmail.to](https://www.agentmail.to/))
 
 ## Development Setup
@@ -41,9 +45,9 @@ A Windows 11–compatible desktop mail client for [AgentMail](https://www.agentm
    npm start
    ```
 
-## Building for Windows 11
+## Building for Production
 
-### On Windows
+### Windows 11
 
 To build a production-ready installer and portable executable for Windows 11:
 
@@ -55,17 +59,56 @@ This will create two artifacts in the `release/` directory:
 - **NSIS Installer**: `AgentMail Desktop Setup X.X.X.exe` (installable .exe)
 - **Portable**: `AgentMail Desktop X.X.X.exe` (standalone, no installation required)
 
-### On Linux/macOS
+**Cross-platform note**: To create Windows installers from Linux/macOS, you'll need Wine (for NSIS) or use a Windows CI environment.
 
-The project is configured for Windows builds, but you can compile the source code on any platform:
+### macOS
+
+To build for macOS on a Mac:
+
+```bash
+# Universal binary (Apple Silicon + Intel)
+npm run build:mac
+
+# Or build for specific architecture:
+npm run build:mac:arm64  # Apple Silicon only
+npm run build:mac:x64    # Intel only
+```
+
+This will create artifacts in the `release/` directory:
+- **DMG**: `AgentMail Desktop-X.X.X-universal.dmg` (drag-to-install disk image)
+- **ZIP**: `AgentMail Desktop-X.X.X-universal-mac.zip` (portable archive)
+
+#### macOS Code Signing & Notarization (Optional)
+
+For distribution outside the App Store, Apple recommends code signing and notarization:
+
+1. **Code Signing**: Requires a paid Apple Developer account ($99/year)
+   - Set environment variables:
+     ```bash
+     export CSC_LINK=/path/to/certificate.p12
+     export CSC_KEY_PASSWORD=your-cert-password
+     ```
+   - Then run `npm run build:mac`
+
+2. **Notarization**: After signing, notarize with Apple:
+   ```bash
+   export APPLE_ID=your-apple-id@example.com
+   export APPLE_ID_PASSWORD=app-specific-password
+   export APPLE_TEAM_ID=your-team-id
+   npm run build:mac
+   ```
+
+**For v1, these are optional.** Users can install unsigned builds by right-clicking the app and selecting "Open" (bypasses Gatekeeper).
+
+electron-builder is configured with `hardenedRuntime` and entitlements for future signing. See `assets/entitlements.mac.plist`.
+
+### Development Builds
+
+Compile the source code without packaging (works on any platform):
 
 ```bash
 npm run build
 ```
-
-To create the Windows installer from Linux/macOS, you'll need:
-- Wine (for NSIS)
-- Or use a Windows CI environment (GitHub Actions, etc.)
 
 For detailed electron-builder configuration, see `package.json` under the `build` section.
 
@@ -100,9 +143,13 @@ agentmail-desktop/
 ### Secure Key Storage
 
 - API keys are encrypted using Electron's `safeStorage` module
-- On Windows, this uses DPAPI (Data Protection API) integrated with Windows Credential Manager
+- **Windows**: Uses DPAPI (Data Protection API) integrated with Windows Credential Manager
+- **macOS**: Uses Keychain (system-level secure storage)
+- **Linux**: Uses libsecret (if available)
 - Keys are stored in `userData/config` table as encrypted base64 strings
 - **Never logged or stored in plain text**
+
+The same code works across all platforms — `safeStorage` automatically selects the appropriate system API.
 
 ### Folder Mapping
 
@@ -166,9 +213,27 @@ Test files are located in `src/tests/`.
 
 If you see this error, `safeStorage` is not available on your system. This can happen if:
 - You're running on an unsupported platform
-- The app is running in an insecure context
+- The app is running in an insecure context (rare)
 
-**Solution**: Ensure you're running on Windows 10/11 or macOS with appropriate permissions.
+**Solution**: Ensure you're running on:
+- Windows 10/11 with user profile access
+- macOS 10.12+ with Keychain access
+- Linux with libsecret installed
+
+### macOS: "App is damaged and can't be opened"
+
+This happens with unsigned apps on macOS. To bypass Gatekeeper:
+
+1. Right-click (or Ctrl+click) the app in Finder
+2. Select "Open" from the context menu
+3. Click "Open" in the dialog
+
+Or remove the quarantine attribute:
+```bash
+xattr -cr /Applications/AgentMail\ Desktop.app
+```
+
+For production distribution, code sign and notarize the app (see Building for macOS above).
 
 ### Messages not syncing
 
@@ -178,7 +243,7 @@ If you see this error, `safeStorage` is not available on your system. This can h
 
 ### Build fails on Linux
 
-electron-builder needs Wine to create Windows installers on Linux. Install it:
+**For Windows builds**: electron-builder needs Wine to create Windows installers on Linux:
 
 ```bash
 # Ubuntu/Debian
@@ -188,7 +253,9 @@ sudo apt install wine64
 sudo pacman -S wine
 ```
 
-Or build on a Windows machine/VM.
+**For macOS builds**: Linux cannot create macOS .dmg or .app bundles. Use a macOS machine or macOS CI runner (GitHub Actions).
+
+Or build platform-specific artifacts on their respective native systems.
 
 ## Architecture
 

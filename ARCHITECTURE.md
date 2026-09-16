@@ -4,7 +4,7 @@ This document describes the technical architecture of the AgentMail Desktop clie
 
 ## Overview
 
-AgentMail Desktop is an Electron-based application that provides a native Windows 11 mail client for the AgentMail API. It uses:
+AgentMail Desktop is an Electron-based application that provides a native cross-platform mail client for the AgentMail API, supporting **Windows 11** and **macOS** (Apple Silicon + Intel). It uses:
 
 - **Electron** for cross-platform desktop functionality
 - **React** for the UI layer
@@ -195,9 +195,13 @@ CREATE TABLE inboxes (
 
 **Platform Integration:**
 
-- **Windows**: Uses DPAPI, keys are protected per-user
-- **macOS**: Uses Keychain
-- **Linux**: Uses libsecret
+Electron's `safeStorage` automatically uses the most secure storage available on each platform:
+
+- **Windows**: DPAPI (Data Protection API), keys are protected per-user account via Windows Credential Manager
+- **macOS**: Keychain (macOS system-level secure storage), requires user authentication
+- **Linux**: libsecret (GNOME Keyring or KDE Wallet if available)
+
+**No code changes required** — the same TypeScript code works across all platforms. The OS-level integration is handled by Electron's native modules.
 
 ### Context Isolation
 
@@ -271,8 +275,16 @@ Then run `npm start` to launch Electron pointing to `http://localhost:3000`.
 
 ### Production
 
+**Windows:**
 ```bash
 npm run build:win
+```
+
+**macOS:**
+```bash
+npm run build:mac          # Universal binary (Apple Silicon + Intel)
+npm run build:mac:arm64    # Apple Silicon only
+npm run build:mac:x64      # Intel only
 ```
 
 Steps:
@@ -283,8 +295,61 @@ Steps:
    - Output: `dist/main/preload.js`
 3. **Compile renderer**: `webpack --config webpack.renderer.config.js --mode production`
    - Output: `dist/renderer/` (HTML + JS + CSS)
-4. **electron-builder**: Packages `dist/` into Windows installer + portable .exe
-   - Output: `release/`
+4. **electron-builder**: Packages `dist/` into platform-specific installers
+   - Windows: `release/AgentMail Desktop Setup X.X.X.exe` (NSIS) + portable .exe
+   - macOS: `release/AgentMail Desktop-X.X.X-universal.dmg` + .zip
+
+## Platform-Specific Build Configuration
+
+### Windows
+
+- **Targets**: NSIS installer (x64) + portable .exe (x64)
+- **Icon**: `assets/icon.ico`
+- **Installer Options**: User-selectable install directory, desktop/start menu shortcuts
+- **Security**: DPAPI for key storage (automatic via `safeStorage`)
+
+### macOS
+
+- **Targets**: DMG (universal) + ZIP (universal)
+- **Icon**: `assets/icon.icns`
+- **Architectures**: 
+  - Universal binary (default): Runs natively on both Apple Silicon (arm64) and Intel (x64)
+  - Or build separate arm64/x64 binaries
+- **Security**: Keychain for key storage (automatic via `safeStorage`)
+- **Hardened Runtime**: Enabled (required for macOS 10.15+)
+- **Entitlements**: `assets/entitlements.mac.plist`
+  - JIT compilation allowed (for Electron/Chromium)
+  - Network client access
+  - Disable library validation (for native modules like better-sqlite3)
+
+#### macOS Code Signing (Optional for v1)
+
+For distribution outside development:
+
+1. **Ad-hoc signing** (free, local development only):
+   ```bash
+   codesign --deep --force --sign - /Applications/AgentMail\ Desktop.app
+   ```
+
+2. **Developer ID signing** (requires paid Apple Developer account):
+   - Set environment variables before building:
+     ```bash
+     export CSC_LINK=/path/to/certificate.p12
+     export CSC_KEY_PASSWORD=cert-password
+     npm run build:mac
+     ```
+
+3. **Notarization** (recommended for public distribution):
+   - After signing, notarize with Apple:
+     ```bash
+     export APPLE_ID=your-id@example.com
+     export APPLE_ID_PASSWORD=app-specific-password
+     export APPLE_TEAM_ID=XXXXXXXXXX
+     npm run build:mac
+     ```
+   - electron-builder handles the notarization workflow
+
+**For v1, unsigned builds work fine.** Users can bypass Gatekeeper by right-clicking and selecting "Open."
 
 ## Testing Strategy
 
@@ -309,7 +374,7 @@ Located in `src/tests/`, using Jest + ts-jest.
 
 ### Manual Testing
 
-Checklist for new builds:
+Checklist for new builds (test on both Windows and macOS):
 
 1. ✅ First launch: API key prompt
 2. ✅ Inbox selection (3 max enforced)
@@ -317,9 +382,10 @@ Checklist for new builds:
 4. ✅ Compose sends successfully
 5. ✅ Reply works
 6. ✅ Delete removes from cloud + local
-7. ✅ Key survives app restart (encrypted storage)
+7. ✅ Key survives app restart (encrypted storage via safeStorage)
 8. ✅ Auto-sync works (check console logs)
 9. ✅ Window focus pauses/resumes sync
+10. ✅ **macOS-specific**: Keychain integration works (prompts for access on first launch)
 
 ## Limitations & Future Work
 
@@ -385,13 +451,40 @@ mainWindow.webContents.openDevTools();
 
 ### Database Inspection
 
-SQLite database is at:
+SQLite database location:
 
+**Windows:**
 ```
 %APPDATA%/agentmail-desktop/agentmail.db
 ```
 
+**macOS:**
+```
+~/Library/Application Support/agentmail-desktop/agentmail.db
+```
+
+**Linux:**
+```
+~/.config/agentmail-desktop/agentmail.db
+```
+
 Use a tool like [DB Browser for SQLite](https://sqlitebrowser.org/) to inspect.
+
+### Platform-Specific Debugging
+
+**macOS Keychain:**
+
+If key storage fails on macOS, check Keychain Access.app:
+- Search for "Electron Safe Storage"
+- Verify the app has permission to access the keychain
+- Delete the entry and restart the app to re-prompt
+
+**Windows Credential Manager:**
+
+On Windows, stored keys appear in Credential Manager:
+- Open Control Panel → Credential Manager
+- Look under "Windows Credentials"
+- Entry name: "Electron Safe Storage"
 
 ## API Reference (AgentMail)
 

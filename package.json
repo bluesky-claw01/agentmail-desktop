@@ -1,7 +1,7 @@
 {
   "name": "agentmail-desktop",
   "version": "1.0.0",
-  "description": "Windows 11 desktop client for AgentMail",
+  "description": "Cross-platform desktop client for AgentMail (Windows 11 & macOS)",
   "main": "dist/main/main.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:main\" \"npm run dev:preload\" \"npm run dev:renderer\"",
@@ -13,6 +13,9 @@
     "build:preload": "webpack --config webpack.preload.config.js --mode production",
     "build:renderer": "webpack --config webpack.renderer.config.js --mode production",
     "build:win": "npm run build && electron-builder --win --x64",
+    "build:mac": "npm run build && electron-builder --mac --universal",
+    "build:mac:arm64": "npm run build && electron-builder --mac --arm64",
+    "build:mac:x64": "npm run build && electron-builder --mac --x64",
     "start": "electron .",
     "test": "jest",
     "lint": "eslint src --ext .ts,.tsx"
@@ -78,6 +81,42 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["universal"]
+        },
+        {
+          "target": "zip",
+          "arch": ["universal"]
+        }
+      ],
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 380
+      }
     },
     "files": [
       "dist/**/*",
